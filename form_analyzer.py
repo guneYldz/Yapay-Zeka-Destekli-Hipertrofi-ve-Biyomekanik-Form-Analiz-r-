@@ -164,6 +164,54 @@ def draw_hints(frame):
                     cv2.FONT_HERSHEY_SIMPLEX, 0.4, (110, 110, 130), 1, cv2.LINE_AA)
 
 
+# ─── Açı analiz motoru (saf fonksiyon – birim test dostu) ────────────────────
+def analyze_angles(hip_a: float, knee_a: float, back_a: float) -> dict:
+    """
+    Verilen kalça, diz ve sırt açılarını biyomekanik eşiklerle karşılaştırır.
+
+    Parametreler
+    ------------
+    hip_a  : Kalça eklem açısı (derece)
+    knee_a : Diz eklem açısı (derece)
+    back_a : Sırın düşeyden sapma açısı (derece)
+
+    Döndürür
+    --------
+    dict:
+        warnings : list[str]  – Uyarı mesajları listesi
+        status   : str        – Genel durum etiketi
+        risk     : str        – "ok" | "warn" | "danger"
+    """
+    warnings: list = []
+    status = "FORM UYGUN"
+    risk = "ok"
+
+    # ── Kalça kontrolü ────────────────────────────────────────────────────────
+    if hip_a < HIP_DEEP:
+        warnings.append("!! DİKKAT: SAKATLIK RİSKİ YÜKSEK – ÇOK DERİN SQUAT !!")
+        status = "SAKATLIK RİSKİ!"
+        risk = "danger"
+    elif hip_a > HIP_SHALLOW:
+        warnings.append("Yetersiz derinlik – daha derin inin!")
+        if risk != "danger":
+            status = "DERİNLEŞTİRİN"
+            risk = "warn"
+
+    # ── Sırt kontrolü ─────────────────────────────────────────────────────────
+    if back_a > BACK_THRESH:
+        warnings.append(f"!! SIRT EĞİLMESİ {back_a:.0f}° – Omurgayı Dik Tut !!")
+        status = "SIRT FORMUNU DÜZELTİN!"
+        risk = "danger"
+
+    # ── Diz kontrolü ──────────────────────────────────────────────────────────
+    if knee_a > KNEE_DANGER:
+        warnings.append("Diz açısı kritik! Kontrolü kaybediyorsunuz!")
+        if risk != "danger":
+            risk = "danger"
+
+    return {"warnings": warnings, "status": status, "risk": risk}
+
+
 # ─── Ana döngü ────────────────────────────────────────────────────────────────
 def main():
     cap = cv2.VideoCapture(0)
