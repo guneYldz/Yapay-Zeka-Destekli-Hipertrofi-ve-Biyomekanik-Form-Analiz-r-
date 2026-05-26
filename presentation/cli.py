@@ -6,9 +6,9 @@ import json
 import sys
 from typing import Dict
 
-from src.application.use_cases import AnalyzeFormUseCase
-from src.domain.entities import ExerciseType
-from src.infrastructure.adapters import MockPoseAdapter
+from application.use_cases import AnalyzeFormUseCase
+from data.adapters import MockPoseAdapter
+from domain.entities import ExerciseType
 
 
 def main() -> None:
@@ -17,9 +17,9 @@ def main() -> None:
     In a real app, this might read from a file or stdin.
     Here we provide an example usage with hardcoded/mock JSON.
     """
+
     print("=== AI Form Analyzer CLI ===")
-    
-    # Mock JSON input representing a bad squat (knees caving in, knee angle sharp)
+
     mock_json_input = """
     {
         "exercise": "SQUAT",
@@ -35,31 +35,27 @@ def main() -> None:
         }
     }
     """
-    
+
     data: Dict = json.loads(mock_json_input)
-    
-    # 1. Parse Exercise Type
+
     try:
         exercise_str = data.get("exercise", "SQUAT").upper()
         exercise = ExerciseType[exercise_str]
     except KeyError:
         print(f"Error: Unsupported exercise type '{exercise_str}'")
         sys.exit(1)
-        
-    # 2. Adapt Input to Domain Entity
+
     pose_data = data.get("pose", {})
     frame = MockPoseAdapter.from_dict(pose_data)
-    
-    # 3. Execute Use Case
+
     use_case = AnalyzeFormUseCase()
     issues, risk_level, explanation = use_case.execute(frame, exercise)
-    
-    # 4. Present Output
-    print(f"\\nAnalysis for {exercise.name}:")
+
+    print(f"\nAnalysis for {exercise.name}:")
     print("-" * 30)
     print(f"Risk Level: {risk_level.value}")
-    print(f"Explanation: {explanation}\\n")
-    
+    print(f"Explanation: {explanation}\n")
+
     if issues:
         print("Detailed Issues:")
         for idx, issue in enumerate(issues, 1):

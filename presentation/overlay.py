@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from core.training_logic import MovementAnalysis
+from domain.analyzer import AnalysisResult
 
 
 @dataclass(frozen=True)
@@ -18,6 +18,6 @@ class OverlayRenderer:
     green = (0, 255, 0)
     red = (0, 0, 255)
 
-    def render_analysis(self, analysis: MovementAnalysis) -> list[OverlayItem]:
+    def render_analysis(self, analysis: AnalysisResult) -> list[OverlayItem]:
         # TODO: overlay composition will be implemented in the UI branch.
         raise NotImplementedError

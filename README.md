@@ -4,15 +4,16 @@ Bu repo, katmanlı mimari (Layered Architecture) yaklaşımıyla, poz verisi (Me
 
 ## Katmanlar
 
-- `data/`: Pose (landmark) edinimi ve normalize etme katmanı (MediaPipe entegrasyonu burada).
-- `core/`: Saf matematik/biomekanik ve form analiz kuralları (UI ve CV bağımlılığı yok).
-- `ui/`: Görselleştirme/overlay ve kullanıcıya gösterilen çıktılar.
+- `domain/`: Saf matematik/biomekanik, kurallar ve analiz (UI ve CV bağımlılığı yok).
+- `application/`: Use-case ve orkestrasyon katmanı.
+- `data/`: Pose (landmark) edinimi ve adapter katmanı (MediaPipe entegrasyonu burada).
+- `presentation/`: CLI ve görsel arayuzler.
 - `tests/`: Unit testler (CV bağımlılığı olmadan, mock/simülasyon verilerle).
 
 ## Form Analizi
 
-- `core/calculator.py`: İleride landmark -> açı hesaplayacak modülün iskeleti ve `CalculatedAngles` tipi.
-- `core/analyzer.py`: `CalculatedAngles` girdisini alıp threshold (eşik) mantığıyla uyarılar üreten `FormAnalyzer`.
+- `domain/calculator.py`: İleride landmark -> açı hesaplayacak modülün iskeleti ve `CalculatedAngles` tipi.
+- `domain/analyzer.py`: `CalculatedAngles` girdisini alıp threshold (eşik) mantığıyla uyarılar üreten `FormAnalyzer`.
 
 ## Testleri Çalıştırma
 
