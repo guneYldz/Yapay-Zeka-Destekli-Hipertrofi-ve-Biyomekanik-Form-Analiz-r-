@@ -7,8 +7,6 @@ from core.calculator import CalculatedAngles
 
 @dataclass(frozen=True)
 class Thresholds:
-    """Thresholds used by the analyzer to flag form issues."""
-
     squat_max_knee_angle_degrees: float = 110.0
     deadlift_min_torso_angle_degrees: float = 140.0
 
@@ -29,8 +27,6 @@ class AnalysisResult:
 
 
 class FormAnalyzer:
-    """Threshold-based form checks using precomputed angles."""
-
     def __init__(self, thresholds: Thresholds | None = None) -> None:
         self.thresholds = thresholds or Thresholds()
 
@@ -38,21 +34,16 @@ class FormAnalyzer:
         warnings: list[Warning] = []
 
         if angles.knee_angle_degrees is None:
-            warnings.append(
-                Warning(
-                    code="missing_knee_angle",
-                    message="Diz açısı bulunamadı.",
-                    severity="error",
-                )
-            )
+            warnings.append(Warning(
+                code="missing_knee_angle",
+                message="Diz açısı bulunamadı.",
+                severity="error",
+            ))
         elif angles.knee_angle_degrees > self.thresholds.squat_max_knee_angle_degrees:
-            warnings.append(
-                Warning(
-                    code="squat_depth_insufficient",
-                    message="Squat derinliği yetersiz (diz açısı eşiğin üzerinde).",
-                    severity="warning",
-                )
-            )
+            warnings.append(Warning(
+                code="squat_depth_insufficient",
+                message="Squat derinliği yetersiz (diz açısı eşiğin üzerinde).",
+            ))
 
         return AnalysisResult(
             exercise="squat",
@@ -65,21 +56,16 @@ class FormAnalyzer:
         warnings: list[Warning] = []
 
         if angles.torso_angle_degrees is None:
-            warnings.append(
-                Warning(
-                    code="missing_torso_angle",
-                    message="Torso/sırt açısı bulunamadı.",
-                    severity="error",
-                )
-            )
+            warnings.append(Warning(
+                code="missing_torso_angle",
+                message="Torso/sırt açısı bulunamadı.",
+                severity="error",
+            ))
         elif angles.torso_angle_degrees < self.thresholds.deadlift_min_torso_angle_degrees:
-            warnings.append(
-                Warning(
-                    code="back_angle_injury_risk",
-                    message="Sırt açısı sakatlık riski taşıyor (torso açısı eşiğin altında).",
-                    severity="warning",
-                )
-            )
+            warnings.append(Warning(
+                code="back_angle_injury_risk",
+                message="Sırt açısı sakatlık riski taşıyor (torso açısı eşiğin altında).",
+            ))
 
         return AnalysisResult(
             exercise="deadlift",

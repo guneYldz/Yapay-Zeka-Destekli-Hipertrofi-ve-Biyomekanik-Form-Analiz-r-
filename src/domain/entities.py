@@ -10,7 +10,7 @@ from typing import Dict, List, Optional
 
 class Joint(Enum):
     """Anatomical joints mapped for pose estimation."""
-    NOSE = auto()
+    NOSE = auto() 
     LEFT_EYE = auto()
     RIGHT_EYE = auto()
     LEFT_SHOULDER = auto()

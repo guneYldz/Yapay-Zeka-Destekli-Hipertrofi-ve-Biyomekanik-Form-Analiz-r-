@@ -1,19 +1,9 @@
-"""
-data/adapter_demo.py
-====================
-MockAdapter ve MediaPipeAdapter'in hizli test edilmesi icin demo scripti.
-
-Kullanim:
-    python -m data.adapter_demo
-"""
-
 from __future__ import annotations
 
 from data.adapters import LandmarkIndex, MockAdapter, create_adapter
 
 
 def demo_mock_squat() -> None:
-    """Squat pozundaki sahte verileri gosterir."""
     print("\n-- MockAdapter (squat) --")
     mock = MockAdapter(pose="squat", noise=0.005, seed=42)
     frame = mock.convert(frame_index=0, timestamp_ms=0.0)
@@ -29,7 +19,6 @@ def demo_mock_squat() -> None:
 
 
 def demo_mock_sequence() -> None:
-    """10 ardisik sahte kare uretir ve timestamp'leri gosterir."""
     print("\n-- MockAdapter sequence (10 kare) --")
     mock = MockAdapter(pose="stand", noise=0.003)
     frames = mock.generate_sequence(num_frames=10, fps=30.0)
@@ -40,8 +29,7 @@ def demo_mock_sequence() -> None:
 
 
 def demo_factory() -> None:
-    """create_adapter fabrika fonksiyonunu test eder."""
-    print("\n-- create_adapter() fabrika --")
+    print("\n-- create_adapter() --")
     adapter = create_adapter("mock", pose="random", seed=7)
     frame = adapter.convert(frame_index=99, timestamp_ms=3300.0)
     print(f"Random frame  : {frame.frame_index} | landmark[0]: {frame.get(0)}")
@@ -54,4 +42,4 @@ if __name__ == "__main__":
     demo_mock_squat()
     demo_mock_sequence()
     demo_factory()
-    print("\n[OK] Tum demo adimlari basariyla tamamlandi.\n")
+    print("\n[OK] Tum adimlar basariyla tamamlandi.\n")

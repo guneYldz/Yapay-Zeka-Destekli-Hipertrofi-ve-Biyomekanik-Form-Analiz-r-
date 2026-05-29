@@ -1,11 +1,3 @@
-"""
-=============================================================
-  Yapay Zeka Destekli Hipertrofi ve Biyomekanik Form Analizörü
-  Gerçek Zamanlı Squat Form Analiz Motoru
-  MediaPipe 0.10.35  |  OpenCV  |  Trigonometri
-=============================================================
-"""
-
 import cv2
 import numpy as np
 import math
@@ -16,14 +8,14 @@ import urllib.request
 
 import mediapipe as mp
 from mediapipe.tasks import python
+from mediapipe.tasks import python as mp_python
 from mediapipe.tasks.python import vision
 from mediapipe.tasks.python.vision import (
     PoseLandmarker, PoseLandmarkerOptions, RunningMode, PoseLandmark
 )
 
-# ─── Model dosyasını otomatik indir ──────────────────────────────────────────
 MODEL_FILE = "pose_landmarker_heavy.task"
-MODEL_URL  = (
+MODEL_URL = (
     "https://storage.googleapis.com/mediapipe-models/"
     "pose_landmarker/pose_landmarker_heavy/float16/latest/"
     "pose_landmarker_heavy.task"
@@ -39,24 +31,23 @@ if not os.path.exists(MODEL_FILE):
         print(f"Manuel indirin → {MODEL_URL}")
         sys.exit(1)
 
-# ─── Renkler (BGR) ───────────────────────────────────────────────────────────
-C_OK      = (0,   215, 100)   # Yeşil
-C_WARN    = (0,   165, 255)   # Turuncu
-C_DANGER  = (30,  30,  220)   # Kırmızı
-C_PANEL   = (18,  18,  35)    # Arka plan
-C_TEXT    = (225, 225, 240)   # Metin
-C_GOLD    = (50,  195, 255)   # Altın (BGR)
-C_BLUE    = (240, 170,  60)   # Mavi (BGR)
-C_SKEL    = (80,  220, 180)   # İskelet rengi
+# BGR renk değerleri
+C_OK     = (0,   215, 100)
+C_WARN   = (0,   165, 255)
+C_DANGER = (30,  30,  220)
+C_PANEL  = (18,  18,  35)
+C_TEXT   = (225, 225, 240)
+C_GOLD   = (50,  195, 255)
+C_BLUE   = (240, 170,  60)
+C_SKEL   = (80,  220, 180)
 
-# ─── Eşik açılar ─────────────────────────────────────────────────────────────
-HIP_DEEP     = 80    # derece — çok derin squat
-HIP_PARALLEL = 100   # derece — ideal paralel
-HIP_SHALLOW  = 130   # derece — yetersiz derinlik
-KNEE_DANGER  = 165   # derece — diz tam açık
-BACK_THRESH  = 35    # derece — sırt eğim uyarısı
+# açı eşikleri
+HIP_DEEP     = 80
+HIP_PARALLEL = 100
+HIP_SHALLOW  = 130
+KNEE_DANGER  = 165
+BACK_THRESH  = 35
 
-# ─── MediaPipe landmarker indeksleri ─────────────────────────────────────────
 IDX = {
     'r_shoulder': 12, 'l_shoulder': 11,
     'r_hip': 24,      'l_hip': 23,
@@ -64,7 +55,6 @@ IDX = {
     'r_ankle': 28,    'l_ankle': 27,
 }
 
-# Bağlantılar (iskelet çizgisi)
 CONNECTIONS = [
     (0,1),(1,2),(2,3),(3,7),(0,4),(4,5),(5,6),(6,8),
     (9,10),(11,12),(11,13),(13,15),(12,14),(14,16),
@@ -73,9 +63,7 @@ CONNECTIONS = [
 ]
 
 
-# ─── Hesaplama yardımcıları ───────────────────────────────────────────────────
 def angle3(a, b, c):
-    """a-b-c üçlüsündeki b köşe açısı (derece)."""
     a, b, c = np.array(a), np.array(b), np.array(c)
     r = np.arctan2(c[1]-b[1], c[0]-b[0]) - np.arctan2(a[1]-b[1], a[0]-b[0])
     ang = abs(np.degrees(r))
@@ -83,14 +71,11 @@ def angle3(a, b, c):
 
 
 def vert_angle(p1, p2):
-    """p1→p2 vektörünün düşeyden sapma açısı."""
     dx, dy = p2[0]-p1[0], p2[1]-p1[1]
     return math.degrees(math.atan2(abs(dx), abs(dy) + 1e-6))
 
 
-# ─── Çizim yardımcıları ───────────────────────────────────────────────────────
 def draw_skeleton(frame, lms, h, w):
-    """İskelet ve eklem noktaları çiz."""
     pts = [(lm.x * w, lm.y * h) for lm in lms]
     for a, b in CONNECTIONS:
         if a < len(pts) and b < len(pts):
@@ -103,7 +88,6 @@ def draw_skeleton(frame, lms, h, w):
 
 
 def draw_arc(frame, center, angle_deg, color, r=45):
-    """Açı yayı ve değer etiketi çiz."""
     cx, cy = int(center[0]), int(center[1])
     cv2.ellipse(frame, (cx, cy), (r, r), 0, -90, int(angle_deg)-90, color, 3, cv2.LINE_AA)
     mid_r = math.radians(-90 + angle_deg / 2)
@@ -114,7 +98,6 @@ def draw_arc(frame, center, angle_deg, color, r=45):
 
 
 def draw_panel(frame, metrics):
-    """Sol taraf metrik kartları."""
     for i, m in enumerate(metrics):
         x1, y1, x2, y2 = 8, 80 + i * 76, 230, 140 + i * 76
         ov = frame.copy()
@@ -164,7 +147,6 @@ def draw_hints(frame):
                     cv2.FONT_HERSHEY_SIMPLEX, 0.4, (110, 110, 130), 1, cv2.LINE_AA)
 
 
-# ─── Ana döngü ────────────────────────────────────────────────────────────────
 def main():
     cap = cv2.VideoCapture(0)
     if not cap.isOpened():
@@ -173,9 +155,9 @@ def main():
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
 
-    reps     = 0
-    stage    = None
-    ss_idx   = 0
+    reps   = 0
+    stage  = None
+    ss_idx = 0
 
     print("=" * 58)
     print("  Biyomekanik Form Analizörü BAŞLADI")
@@ -199,13 +181,12 @@ def main():
             frame = cv2.flip(frame, 1)
             h, w = frame.shape[:2]
 
-            # MediaPipe'e gönder
             rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             result = detector.detect(mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb))
 
-            warnings     = []
-            status       = "POZA HAZIR"
-            status_c     = C_OK
+            warnings = []
+            status   = "POZA HAZIR"
+            status_c = C_OK
             hip_a = knee_a = back_a = 0.0
 
             if result.pose_landmarks:
@@ -223,7 +204,6 @@ def main():
                 knee_a = angle3(hip_p, knee_p, ankle)
                 back_a = vert_angle(hip_p, shoulder)
 
-                # Renk kararı
                 hip_c  = C_OK if HIP_DEEP < hip_a < HIP_SHALLOW else C_DANGER
                 knee_c = C_OK if knee_a < KNEE_DANGER else C_WARN
                 back_c = C_OK if back_a < BACK_THRESH else C_DANGER
@@ -231,18 +211,15 @@ def main():
                 draw_arc(frame, hip_p,  hip_a,  hip_c,  r=48)
                 draw_arc(frame, knee_p, knee_a, knee_c, r=36)
 
-                # Tekrar sayacı
                 if hip_a < HIP_PARALLEL:
                     stage = "down"
                 if hip_a > 150 and stage == "down":
                     stage = "up"
                     reps += 1
 
-                # Uyarı mantığı
                 if hip_a < HIP_DEEP:
                     warnings.append("!! DİKKAT: SAKATLIK RİSKİ YÜKSEK – ÇOK DERİN SQUAT !!")
                     status, status_c = "SAKATLIK RİSKİ!", C_DANGER
-
                 elif hip_a > HIP_SHALLOW:
                     warnings.append("Yetersiz derinlik – daha derin inin!")
                     if status_c != C_DANGER:
@@ -260,8 +237,7 @@ def main():
                     {'label': 'KALÇA AÇISI', 'v': hip_a,  'c': hip_c},
                     {'label': 'DİZ AÇISI',   'v': knee_a, 'c': knee_c},
                     {'label': 'SIRT EĞİMİ',  'v': back_a, 'c': back_c},
-                    {'label': 'SQUAT FAZI',
-                     'v': (stage.upper() if stage else 'BEKLE'), 'c': C_GOLD},
+                    {'label': 'SQUAT FAZI',  'v': (stage.upper() if stage else 'BEKLE'), 'c': C_GOLD},
                 ])
 
                 if warnings:
