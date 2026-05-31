@@ -1,8 +1,3 @@
-"""
-Domain rules for exercise validation and risk scoring.
-MANDATORY PURE: No external dependencies allowed.
-"""
-
 from abc import ABC, abstractmethod
 from typing import List
 
@@ -11,18 +6,12 @@ from domain.geometry import calculate_angle_2d, calculate_vertical_angle
 
 
 class ValidationRule(ABC):
-    """Abstract base class for all form validation rules."""
-
     @abstractmethod
     def validate(self, frame: PoseFrame) -> List[FormIssue]:
-        """Validate the pose frame and return a list of issues found."""
-
         raise NotImplementedError
 
 
 class SquatKneeAngleRule(ValidationRule):
-    """Squat rule: Checks if the knee angle is dangerously deep (< 70)."""
-
     def validate(self, frame: PoseFrame) -> List[FormIssue]:
         issues = []
 
@@ -49,8 +38,6 @@ class SquatKneeAngleRule(ValidationRule):
 
 
 class SquatKneeInwardRule(ValidationRule):
-    """Squat rule: Checks for knee valgus (knees caving inward)."""
-
     def validate(self, frame: PoseFrame) -> List[FormIssue]:
         issues = []
 
@@ -76,8 +63,6 @@ class SquatKneeInwardRule(ValidationRule):
 
 
 class SquatBackAngleRule(ValidationRule):
-    """Squat rule: Checks if the back leans too far forward."""
-
     def validate(self, frame: PoseFrame) -> List[FormIssue]:
         issues = []
 
@@ -99,8 +84,6 @@ class SquatBackAngleRule(ValidationRule):
 
 
 class BenchPressBarPathRule(ValidationRule):
-    """Bench Press rule: Checks basic arm extension mechanics."""
-
     def validate(self, frame: PoseFrame) -> List[FormIssue]:
         issues = []
 
@@ -126,8 +109,6 @@ class BenchPressBarPathRule(ValidationRule):
 
 
 class RiskScoringEngine:
-    """Calculates an aggregate risk score and categorizes the risk level."""
-
     @staticmethod
     def calculate_risk(issues: List[FormIssue]) -> tuple[RiskLevel, int]:
         if not issues:
@@ -150,8 +131,6 @@ class RiskScoringEngine:
 
 
 class RuleRegistry:
-    """Registry to fetch the correct rules for an exercise."""
-
     @staticmethod
     def get_rules_for(exercise: ExerciseType) -> List[ValidationRule]:
         if exercise == ExerciseType.SQUAT:
