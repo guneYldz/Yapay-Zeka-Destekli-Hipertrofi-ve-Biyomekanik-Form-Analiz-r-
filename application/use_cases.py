@@ -1,8 +1,3 @@
-"""
-Application use cases.
-Orchestrates domain entities and rules.
-"""
-
 from typing import List, Tuple
 
 from domain.entities import ExerciseType, FormIssue, PoseFrame, RiskLevel
@@ -10,16 +5,7 @@ from domain.rules import RiskScoringEngine, RuleRegistry
 
 
 class AnalyzeFormUseCase:
-    """Use case to analyze exercise form from a pose frame."""
-
     def execute(self, frame: PoseFrame, exercise: ExerciseType) -> Tuple[List[FormIssue], RiskLevel, str]:
-        """
-        Analyzes the frame and returns:
-        1. List of FormIssues
-        2. RiskLevel
-        3. Explanation string
-        """
-
         issues: List[FormIssue] = []
 
         rules = RuleRegistry.get_rules_for(exercise)

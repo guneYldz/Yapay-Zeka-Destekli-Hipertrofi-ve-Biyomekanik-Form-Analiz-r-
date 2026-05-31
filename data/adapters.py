@@ -9,7 +9,6 @@ from data.models import Landmark
 from domain.entities import Joint, Point3D, PoseFrame as DomainPoseFrame
 
 
-# mediapipe 33 landmark indeksleri
 class LandmarkIndex:
     NOSE            = 0
     LEFT_EYE_INNER  = 1
@@ -50,15 +49,13 @@ class LandmarkIndex:
 
 @dataclass(frozen=True)
 class PoseFrame:
-    """Tek bir kareden gelen poz verisi. 33 landmark içerir."""
-
     landmarks: tuple[Landmark, ...]
     frame_index: int = 0
     timestamp_ms: float = 0.0
 
     def get(self, index: int) -> Landmark:
         if index < 0 or index >= len(self.landmarks):
-            raise IndexError(f"Geçersiz indeks: {index} (toplam: {len(self.landmarks)})")
+            raise IndexError(f"Gecersiz indeks: {index} (toplam: {len(self.landmarks)})")
         return self.landmarks[index]
 
     def left_shoulder(self) -> Landmark:
@@ -94,15 +91,7 @@ class PoseAdapter(Protocol):
                 timestamp_ms: float = 0.0) -> PoseFrame: ...
 
 
-# ─── MediaPipe → data.models.Landmark tabanlı adaptör ────────────────────────
-
 class MediaPipeAdapter:
-    """
-    MediaPipe çıktısını PoseFrame'e çevirir.
-    frame_width/height verirsen piksel koordinatına dönüştürür,
-    vermezsen 0..1 normalize kalır.
-    """
-
     def __init__(self, visibility_threshold: float = 0.0,
                  frame_width: int = 1, frame_height: int = 1) -> None:
         self._vis_threshold = visibility_threshold
@@ -115,7 +104,7 @@ class MediaPipeAdapter:
 
         if len(landmarks_list) != LandmarkIndex.TOTAL:
             raise ValueError(
-                f"Beklenen landmark sayısı {LandmarkIndex.TOTAL}, gelen: {len(landmarks_list)}"
+                f"Beklenen landmark sayisi {LandmarkIndex.TOTAL}, gelen: {len(landmarks_list)}"
             )
 
         converted: list[Landmark] = []
@@ -147,11 +136,6 @@ class MediaPipeAdapter:
 
 
 class MockAdapter:
-    """
-    Kamera olmadan test için sahte poz üretir.
-    pose: 'squat', 'stand' veya 'random'
-    """
-
     _SQUAT_TEMPLATE: dict[int, tuple[float, float, float]] = {
         LandmarkIndex.LEFT_SHOULDER:  (0.45, 0.30, -0.10),
         LandmarkIndex.RIGHT_SHOULDER: (0.55, 0.30, -0.10),
@@ -177,7 +161,7 @@ class MockAdapter:
     def __init__(self, pose: str = "squat", noise: float = 0.005,
                  seed: int | None = 42) -> None:
         if pose not in ("squat", "stand", "random"):
-            raise ValueError(f"Geçersiz pose: '{pose}'. squat, stand veya random olmalı.")
+            raise ValueError(f"Gecersiz pose: '{pose}'. squat, stand veya random olmali.")
         self._pose  = pose
         self._noise = noise
         self._rng   = random.Random(seed)
@@ -230,15 +214,12 @@ class MockAdapter:
 
 
 def create_adapter(source: str = "mediapipe", **kwargs: object) -> MediaPipeAdapter | MockAdapter:
-    """'mediapipe' veya 'mock' seçeneğine göre adaptör döndürür."""
     if source == "mediapipe":
         return MediaPipeAdapter(**kwargs)  # type: ignore[arg-type]
     if source == "mock":
         return MockAdapter(**kwargs)  # type: ignore[arg-type]
-    raise ValueError(f"Geçersiz kaynak: '{source}'. mediapipe veya mock olmalı.")
+    raise ValueError(f"Gecersiz kaynak: '{source}'. mediapipe veya mock olmali.")
 
-
-# ─── MediaPipe → domain.entities.PoseFrame tabanlı adaptörler ────────────────
 
 MEDIAPIPE_JOINT_MAP = {
     0: Joint.NOSE,
@@ -260,16 +241,8 @@ MEDIAPIPE_JOINT_MAP = {
 
 
 class MediaPipePoseAdapter:
-    """Adapts a MediaPipe NormalizedLandmarkList to a Domain PoseFrame."""
-
     @staticmethod
     def to_pose_frame(mp_landmarks: Any) -> DomainPoseFrame:
-        """
-        Converts MediaPipe landmark list to PoseFrame.
-        mp_landmarks is assumed to be an object with a `landmark` attribute,
-        which is an iterable of objects with x, y, z, visibility.
-        """
-
         landmarks_dict = {}
 
         try:
@@ -289,15 +262,8 @@ class MediaPipePoseAdapter:
 
 
 class MockPoseAdapter:
-    """Mock adapter for testing or reading JSON directly."""
-
     @staticmethod
     def from_dict(data: Dict[str, Dict[str, float]]) -> DomainPoseFrame:
-        """
-        Converts a simple dictionary to PoseFrame.
-        Expects format: {"LEFT_HIP": {"x": 0.5, "y": 0.5, "z": 0.0}, ...}
-        """
-
         landmarks_dict = {}
         for joint_name, coords in data.items():
             try:
