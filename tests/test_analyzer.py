@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import unittest
 
-from core.analyzer import FormAnalyzer, Thresholds
-from core.calculator import CalculatedAngles
+from domain.analyzer import FormAnalyzer, Thresholds
+from domain.calculator import CalculatedAngles
 
 
 class TestFormAnalyzer(unittest.TestCase):
