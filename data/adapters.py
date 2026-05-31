@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import math
 import random
@@ -93,8 +93,6 @@ class PoseAdapter(Protocol):
     def convert(self, raw_landmarks: object, frame_index: int = 0,
                 timestamp_ms: float = 0.0) -> PoseFrame: ...
 
-
-# ÔöÇÔöÇÔöÇ MediaPipe ÔåÆ data.models.Landmark tabanl─▒ adapt├Âr ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
 
 class MediaPipeAdapter:
     """
@@ -237,8 +235,6 @@ def create_adapter(source: str = "mediapipe", **kwargs: object) -> MediaPipeAdap
         return MockAdapter(**kwargs)  # type: ignore[arg-type]
     raise ValueError(f"Ge├ğersiz kaynak: '{source}'. mediapipe veya mock olmal─▒.")
 
-
-# ÔöÇÔöÇÔöÇ MediaPipe ÔåÆ domain.entities.PoseFrame tabanl─▒ adapt├Ârler ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
 
 MEDIAPIPE_JOINT_MAP = {
     0: Joint.NOSE,
