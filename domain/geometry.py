@@ -1,20 +1,9 @@
-"""
-Pure geometry module for domain logic.
-MANDATORY PURE: Only built-in math module allowed.
-"""
-
 import math
 
 from domain.entities import Point3D
 
 
 def calculate_angle_3d(p1: Point3D, p2: Point3D, p3: Point3D) -> float:
-    """
-    Calculate the 3D angle formed by p1 - p2 - p3.
-    p2 is the vertex of the angle.
-    Returns angle in degrees [0, 180].
-    """
-
     v1_x = p1.x - p2.x
     v1_y = p1.y - p2.y
     v1_z = p1.z - p2.z
@@ -39,12 +28,6 @@ def calculate_angle_3d(p1: Point3D, p2: Point3D, p3: Point3D) -> float:
 
 
 def calculate_angle_2d(p1: Point3D, p2: Point3D, p3: Point3D) -> float:
-    """
-    Calculate the 2D angle (XY plane) formed by p1 - p2 - p3.
-    p2 is the vertex of the angle.
-    Returns absolute angle in degrees [0, 180].
-    """
-
     radians = math.atan2(p3.y - p2.y, p3.x - p2.x) - math.atan2(p1.y - p2.y, p1.x - p2.x)
     angle = abs(math.degrees(radians))
 
@@ -55,12 +38,6 @@ def calculate_angle_2d(p1: Point3D, p2: Point3D, p3: Point3D) -> float:
 
 
 def calculate_vertical_angle(p1: Point3D, p2: Point3D) -> float:
-    """
-    Calculate the deviation from the vertical (Y axis) for vector p1 -> p2.
-    Useful for measuring back leaning angle.
-    Returns angle in degrees [0, 90].
-    """
-
     dx = p2.x - p1.x
     dy = p2.y - p1.y
 
