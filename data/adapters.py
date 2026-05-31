@@ -94,8 +94,6 @@ class PoseAdapter(Protocol):
                 timestamp_ms: float = 0.0) -> PoseFrame: ...
 
 
-# ─── MediaPipe → data.models.Landmark tabanlı adaptör ────────────────────────
-
 class MediaPipeAdapter:
     """
     MediaPipe çıktısını PoseFrame'e çevirir.
@@ -237,8 +235,6 @@ def create_adapter(source: str = "mediapipe", **kwargs: object) -> MediaPipeAdap
         return MockAdapter(**kwargs)  # type: ignore[arg-type]
     raise ValueError(f"Geçersiz kaynak: '{source}'. mediapipe veya mock olmalı.")
 
-
-# ─── MediaPipe → domain.entities.PoseFrame tabanlı adaptörler ────────────────
 
 MEDIAPIPE_JOINT_MAP = {
     0: Joint.NOSE,
