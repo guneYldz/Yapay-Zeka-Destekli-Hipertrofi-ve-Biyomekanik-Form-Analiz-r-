@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from core.calculator import CalculatedAngles
+from domain.calculator import CalculatedAngles
 
 
 @dataclass(frozen=True)

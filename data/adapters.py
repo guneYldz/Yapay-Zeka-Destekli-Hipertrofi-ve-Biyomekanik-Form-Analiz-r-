@@ -1,11 +1,12 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import math
 import random
 from dataclasses import dataclass, field
-from typing import Protocol, Sequence
+from typing import Any, Dict, Protocol, Sequence
 
 from data.models import Landmark
+from domain.entities import Joint, Point3D, PoseFrame as DomainPoseFrame
 
 
 # mediapipe 33 landmark indeksleri
@@ -49,7 +50,7 @@ class LandmarkIndex:
 
 @dataclass(frozen=True)
 class PoseFrame:
-    """Tek bir kareden gelen poz verisi. 33 landmark içerir."""
+    """Tek bir kareden gelen poz verisi. 33 landmark i├ğerir."""
 
     landmarks: tuple[Landmark, ...]
     frame_index: int = 0
@@ -57,7 +58,7 @@ class PoseFrame:
 
     def get(self, index: int) -> Landmark:
         if index < 0 or index >= len(self.landmarks):
-            raise IndexError(f"Geçersiz indeks: {index} (toplam: {len(self.landmarks)})")
+            raise IndexError(f"Ge├ğersiz indeks: {index} (toplam: {len(self.landmarks)})")
         return self.landmarks[index]
 
     def left_shoulder(self) -> Landmark:
@@ -93,11 +94,13 @@ class PoseAdapter(Protocol):
                 timestamp_ms: float = 0.0) -> PoseFrame: ...
 
 
+# ÔöÇÔöÇÔöÇ MediaPipe ÔåÆ data.models.Landmark tabanl─▒ adapt├Âr ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+
 class MediaPipeAdapter:
     """
-    MediaPipe çıktısını PoseFrame'e çevirir.
-    frame_width/height verirsen piksel koordinatına dönüştürür,
-    vermezsen 0..1 normalize kalır.
+    MediaPipe ├ğ─▒kt─▒s─▒n─▒ PoseFrame'e ├ğevirir.
+    frame_width/height verirsen piksel koordinat─▒na d├Ân├╝┼şt├╝r├╝r,
+    vermezsen 0..1 normalize kal─▒r.
     """
 
     def __init__(self, visibility_threshold: float = 0.0,
@@ -112,7 +115,7 @@ class MediaPipeAdapter:
 
         if len(landmarks_list) != LandmarkIndex.TOTAL:
             raise ValueError(
-                f"Beklenen landmark sayısı {LandmarkIndex.TOTAL}, gelen: {len(landmarks_list)}"
+                f"Beklenen landmark say─▒s─▒ {LandmarkIndex.TOTAL}, gelen: {len(landmarks_list)}"
             )
 
         converted: list[Landmark] = []
@@ -145,7 +148,7 @@ class MediaPipeAdapter:
 
 class MockAdapter:
     """
-    Kamera olmadan test için sahte poz üretir.
+    Kamera olmadan test i├ğin sahte poz ├╝retir.
     pose: 'squat', 'stand' veya 'random'
     """
 
@@ -174,7 +177,7 @@ class MockAdapter:
     def __init__(self, pose: str = "squat", noise: float = 0.005,
                  seed: int | None = 42) -> None:
         if pose not in ("squat", "stand", "random"):
-            raise ValueError(f"Geçersiz pose: '{pose}'. squat, stand veya random olmalı.")
+            raise ValueError(f"Ge├ğersiz pose: '{pose}'. squat, stand veya random olmal─▒.")
         self._pose  = pose
         self._noise = noise
         self._rng   = random.Random(seed)
@@ -227,9 +230,85 @@ class MockAdapter:
 
 
 def create_adapter(source: str = "mediapipe", **kwargs: object) -> MediaPipeAdapter | MockAdapter:
-    """'mediapipe' veya 'mock' seçeneğine göre adaptör döndürür."""
+    """'mediapipe' veya 'mock' se├ğene─şine g├Âre adapt├Âr d├Ând├╝r├╝r."""
     if source == "mediapipe":
         return MediaPipeAdapter(**kwargs)  # type: ignore[arg-type]
     if source == "mock":
         return MockAdapter(**kwargs)  # type: ignore[arg-type]
-    raise ValueError(f"Geçersiz kaynak: '{source}'. mediapipe veya mock olmalı.")
+    raise ValueError(f"Ge├ğersiz kaynak: '{source}'. mediapipe veya mock olmal─▒.")
+
+
+# ÔöÇÔöÇÔöÇ MediaPipe ÔåÆ domain.entities.PoseFrame tabanl─▒ adapt├Ârler ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+
+MEDIAPIPE_JOINT_MAP = {
+    0: Joint.NOSE,
+    2: Joint.LEFT_EYE,
+    5: Joint.RIGHT_EYE,
+    11: Joint.LEFT_SHOULDER,
+    12: Joint.RIGHT_SHOULDER,
+    13: Joint.LEFT_ELBOW,
+    14: Joint.RIGHT_ELBOW,
+    15: Joint.LEFT_WRIST,
+    16: Joint.RIGHT_WRIST,
+    23: Joint.LEFT_HIP,
+    24: Joint.RIGHT_HIP,
+    25: Joint.LEFT_KNEE,
+    26: Joint.RIGHT_KNEE,
+    27: Joint.LEFT_ANKLE,
+    28: Joint.RIGHT_ANKLE,
+}
+
+
+class MediaPipePoseAdapter:
+    """Adapts a MediaPipe NormalizedLandmarkList to a Domain PoseFrame."""
+
+    @staticmethod
+    def to_pose_frame(mp_landmarks: Any) -> DomainPoseFrame:
+        """
+        Converts MediaPipe landmark list to PoseFrame.
+        mp_landmarks is assumed to be an object with a `landmark` attribute,
+        which is an iterable of objects with x, y, z, visibility.
+        """
+
+        landmarks_dict = {}
+
+        try:
+            for idx, mp_lm in enumerate(mp_landmarks.landmark):
+                if idx in MEDIAPIPE_JOINT_MAP:
+                    joint = MEDIAPIPE_JOINT_MAP[idx]
+                    landmarks_dict[joint] = Point3D(
+                        x=mp_lm.x,
+                        y=mp_lm.y,
+                        z=mp_lm.z,
+                        visibility=getattr(mp_lm, "visibility", 1.0),
+                    )
+        except AttributeError:
+            pass
+
+        return DomainPoseFrame(landmarks=landmarks_dict)
+
+
+class MockPoseAdapter:
+    """Mock adapter for testing or reading JSON directly."""
+
+    @staticmethod
+    def from_dict(data: Dict[str, Dict[str, float]]) -> DomainPoseFrame:
+        """
+        Converts a simple dictionary to PoseFrame.
+        Expects format: {"LEFT_HIP": {"x": 0.5, "y": 0.5, "z": 0.0}, ...}
+        """
+
+        landmarks_dict = {}
+        for joint_name, coords in data.items():
+            try:
+                joint = Joint[joint_name]
+                landmarks_dict[joint] = Point3D(
+                    x=coords.get("x", 0.0),
+                    y=coords.get("y", 0.0),
+                    z=coords.get("z", 0.0),
+                    visibility=coords.get("visibility", 1.0),
+                )
+            except KeyError:
+                pass
+
+        return DomainPoseFrame(landmarks=landmarks_dict)
