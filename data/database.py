@@ -11,8 +11,8 @@ class Base(DeclarativeBase):
     pass
 
 
-class WorkoutSessionModel(Base):
-    __tablename__ = "workout_sessions"
+class UserModel(Base):
+    __tablename__ = "users"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     user_name: Mapped[str] = mapped_column(String(120), nullable=False)
