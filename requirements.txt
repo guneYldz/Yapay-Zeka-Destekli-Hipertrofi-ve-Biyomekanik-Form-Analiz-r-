@@ -6,3 +6,5 @@ sqlalchemy==2.0.30
 pydantic==2.7.1
 pytest
 httpx
+customtkinter==5.2.2
+bcrypt==4.1.2
