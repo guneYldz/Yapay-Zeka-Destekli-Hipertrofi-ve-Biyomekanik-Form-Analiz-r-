@@ -1,0 +1,7 @@
+mediapipe
+fastapi
+uvicorn
+opencv-python
+sqlalchemy
+pytest
+httpx
