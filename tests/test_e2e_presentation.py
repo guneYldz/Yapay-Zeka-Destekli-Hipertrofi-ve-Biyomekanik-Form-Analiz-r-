@@ -23,6 +23,8 @@ _sa.text = MagicMock()
 _sa.Integer = MagicMock()
 _sa.String = MagicMock()
 _sa.DateTime = MagicMock()
+_sa.Float = MagicMock()
+_sa.ForeignKey = MagicMock()
 _sa.create_engine = MagicMock()
 sys.modules.setdefault("sqlalchemy", _sa)
 
@@ -31,6 +33,7 @@ _sa_orm.DeclarativeBase = object
 _sa_orm.Mapped = MagicMock()
 _sa_orm.Session = MagicMock()
 _sa_orm.mapped_column = MagicMock()
+_sa_orm.relationship = MagicMock()
 _sa_orm.sessionmaker = MagicMock()
 sys.modules.setdefault("sqlalchemy.orm", _sa_orm)
 
@@ -262,6 +265,7 @@ class TestRealtimeSquatBilesenleri(unittest.TestCase):
 
         captured = io.StringIO()
         with patch("presentation.realtime_squat.cv2.VideoCapture", return_value=mock_cap), \
+             patch("presentation.realtime_squat.vision.PoseLandmarker.create_from_options"), \
              patch("presentation.realtime_squat.init_db"), \
              patch("sys.stdout", captured):
             from presentation.realtime_squat import run_demo

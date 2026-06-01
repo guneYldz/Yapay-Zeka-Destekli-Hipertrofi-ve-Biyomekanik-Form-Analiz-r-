@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 from datetime import datetime
+import bcrypt
 
 from sqlalchemy import DateTime, Float, ForeignKey, Integer, String, create_engine
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, relationship, sessionmaker
@@ -17,6 +18,9 @@ class UserModel(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     user_name: Mapped[str] = mapped_column(String(120), nullable=False)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    role: Mapped[str] = mapped_column(String(20), nullable=False, default="kullanıcı")
+    height: Mapped[float | None] = mapped_column(Float, nullable=True, default=None)
+    weight: Mapped[float | None] = mapped_column(Float, nullable=True, default=None)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
     sessions: Mapped[list["WorkoutSessionModel"]] = relationship(
@@ -69,3 +73,70 @@ SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False, clas
 def init_db() -> None:
     # Tablolari otomatik olusturur.
     Base.metadata.create_all(bind=engine)
+
+
+def register_user(username: str, password: str) -> bool:
+    """Yeni bir kullanici kaydeder. Kullanici adi zaten varsa False doner."""
+    with SessionLocal() as session:
+        existing = session.query(UserModel).filter_by(user_name=username).first()
+        if existing:
+            return False
+        
+        hashed = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+        role = "admin" if username.lower() == "admin" else "kullanıcı"
+        new_user = UserModel(user_name=username, password_hash=hashed, role=role)
+        session.add(new_user)
+        session.commit()
+        return True
+
+
+def verify_user(username: str, password: str) -> dict | None:
+    """Kullanici adi ve sifreyi dogrular. Basariliysa kullanici objesini sozluk olarak doner, degilse None."""
+    with SessionLocal() as session:
+        user = session.query(UserModel).filter_by(user_name=username).first()
+        if not user:
+            return None
+        
+        # Eger veritabaninda daha onceden plaintext kaydedilmis bir sifre varsa (migration oncesi vs)
+        is_valid = False
+        if not user.password_hash.startswith("$2b$") and not user.password_hash.startswith("$2a$"):
+            if user.password_hash == password:
+                is_valid = True
+        elif bcrypt.checkpw(password.encode('utf-8'), user.password_hash.encode('utf-8')):
+            is_valid = True
+
+        if is_valid:
+            user.last_login_at = datetime.utcnow()
+            session.commit()
+            return {
+                "id": user.id,
+                "username": user.user_name,
+                "role": user.role,
+                "height": user.height,
+                "weight": user.weight
+            }
+        return None
+
+def update_user_stats(user_id: int, height: float, weight: float) -> bool:
+    with SessionLocal() as session:
+        user = session.query(UserModel).filter_by(id=user_id).first()
+        if user:
+            user.height = height
+            user.weight = weight
+            session.commit()
+            return True
+        return False
+
+def get_all_users() -> list[dict]:
+    with SessionLocal() as session:
+        users = session.query(UserModel).all()
+        return [{"id": u.id, "username": u.user_name, "role": u.role} for u in users]
+
+def delete_user(user_id: int) -> bool:
+    with SessionLocal() as session:
+        user = session.query(UserModel).filter_by(id=user_id).first()
+        if user:
+            session.delete(user)
+            session.commit()
+            return True
+        return False

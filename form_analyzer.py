@@ -11,7 +11,7 @@ from mediapipe.tasks import python
 from mediapipe.tasks import python as mp_python
 from mediapipe.tasks.python import vision
 from mediapipe.tasks.python.vision import (
-    PoseLandmarker, PoseLandmarkerOptions, RunningMode, PoseLandmark
+    PoseLandmarker, PoseLandmarkerOptions, RunningMode
 )
 
 MODEL_FILE = "pose_landmarker_heavy.task"
@@ -147,6 +147,55 @@ def draw_hints(frame):
                     cv2.FONT_HERSHEY_SIMPLEX, 0.4, (110, 110, 130), 1, cv2.LINE_AA)
 
 
+# ─── Açı analiz motoru (saf fonksiyon – birim test dostu) ────────────────────
+def analyze_angles(hip_a: float, knee_a: float, back_a: float) -> dict:
+    """
+    Verilen kalça, diz ve sırt açılarını biyomekanik eşiklerle karşılaştırır.
+
+    Parametreler
+    ------------
+    hip_a  : Kalça eklem açısı (derece)
+    knee_a : Diz eklem açısı (derece)
+    back_a : Sırın düşeyden sapma açısı (derece)
+
+    Döndürür
+    --------
+    dict:
+        warnings : list[str]  – Uyarı mesajları listesi
+        status   : str        – Genel durum etiketi
+        risk     : str        – "ok" | "warn" | "danger"
+    """
+    warnings: list = []
+    status = "FORM UYGUN"
+    risk = "ok"
+
+    # ── Kalça kontrolü ────────────────────────────────────────────────────────
+    if hip_a < HIP_DEEP:
+        warnings.append("!! DIKKAT: SAKATLIK RISKI YUKSEK - COK DERIN SQUAT !!")
+        status = "SAKATLIK RISKI!"
+        risk = "danger"
+    elif hip_a > HIP_SHALLOW:
+        warnings.append("Yetersiz derinlik - daha derin inin!")
+        if risk != "danger":
+            status = "DERINLESTIRIN"
+            risk = "warn"
+
+    # ── Sırt kontrolü ─────────────────────────────────────────────────────────
+    if back_a > BACK_THRESH:
+        warnings.append(f"!! SIRT EGILMESI {back_a:.0f} - Omurgayi Dik Tut !!")
+        status = "SIRT FORMUNU DUZELTIN!"
+        risk = "danger"
+
+    # ── Diz kontrolü ──────────────────────────────────────────────────────────
+    if knee_a > KNEE_DANGER:
+        warnings.append("Diz acisi kritik! Kontrolu kaybediyorsunuz!")
+        if risk != "danger":
+            risk = "danger"
+
+    return {"warnings": warnings, "status": status, "risk": risk}
+
+
+# ─── Ana döngü ────────────────────────────────────────────────────────────────
 def main():
     cap = cv2.VideoCapture(0)
     if not cap.isOpened():
@@ -165,8 +214,11 @@ def main():
     print("  Q: Çıkış  |  R: Tekrar sıfırla  |  S: Ekran görüntüsü")
     print("=" * 58)
 
+    with open(MODEL_FILE, "rb") as f:
+        model_data = f.read()
+
     opts = PoseLandmarkerOptions(
-        base_options=python.BaseOptions(model_asset_path=MODEL_FILE),
+        base_options=python.BaseOptions(model_asset_buffer=model_data),
         running_mode=RunningMode.IMAGE,
         num_poses=1,
         min_pose_detection_confidence=0.5,
@@ -218,25 +270,25 @@ def main():
                     reps += 1
 
                 if hip_a < HIP_DEEP:
-                    warnings.append("!! DİKKAT: SAKATLIK RİSKİ YÜKSEK – ÇOK DERİN SQUAT !!")
-                    status, status_c = "SAKATLIK RİSKİ!", C_DANGER
+                    warnings.append("!! DIKKAT: SAKATLIK RISKI YUKSEK - COK DERIN SQUAT !!")
+                    status, status_c = "SAKATLIK RISKI!", C_DANGER
                 elif hip_a > HIP_SHALLOW:
-                    warnings.append("Yetersiz derinlik – daha derin inin!")
+                    warnings.append("Yetersiz derinlik - daha derin inin!")
                     if status_c != C_DANGER:
-                        status, status_c = "DERİNLEŞTİRİN", C_WARN
+                        status, status_c = "DERINLESTIRIN", C_WARN
 
                 if back_a > BACK_THRESH:
-                    warnings.append(f"!! SIRT EĞİLMESİ {back_a:.0f}° – Omurgayı Dik Tut !!")
-                    status, status_c = "SIRT FORMUNU DÜZELTİN!", C_DANGER
+                    warnings.append(f"!! SIRT EGILMESI {back_a:.0f} - Omurgayi Dik Tut !!")
+                    status, status_c = "SIRT FORMUNU DUZELTIN!", C_DANGER
 
                 if knee_a > KNEE_DANGER:
-                    warnings.append("Diz açısı kritik! Kontrolü kaybediyorsunuz!")
+                    warnings.append("Diz acisi kritik! Kontrolu kaybediyorsunuz!")
                     status_c = C_DANGER
 
                 draw_panel(frame, [
-                    {'label': 'KALÇA AÇISI', 'v': hip_a,  'c': hip_c},
-                    {'label': 'DİZ AÇISI',   'v': knee_a, 'c': knee_c},
-                    {'label': 'SIRT EĞİMİ',  'v': back_a, 'c': back_c},
+                    {'label': 'KALCA ACISI', 'v': hip_a,  'c': hip_c},
+                    {'label': 'DIZ ACISI',   'v': knee_a, 'c': knee_c},
+                    {'label': 'SIRT EGIMI',  'v': back_a, 'c': back_c},
                     {'label': 'SQUAT FAZI',  'v': (stage.upper() if stage else 'BEKLE'), 'c': C_GOLD},
                 ])
 
@@ -244,7 +296,7 @@ def main():
                     draw_danger_banner(frame, warnings)
             else:
                 cv2.putText(
-                    frame, "Poz algilanamadi – tam vücudunuz görünsün!",
+                    frame, "Poz algilanamadi - tam vucudunuz gorunsun!",
                     (60, h//2), cv2.FONT_HERSHEY_SIMPLEX, 0.7, C_WARN, 2, cv2.LINE_AA
                 )
                 status, status_c = "POZ ALGILANAMADI", C_WARN
@@ -272,4 +324,8 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    if "--no-gui" in sys.argv:
+        main()
+    else:
+        from presentation.gui import run_gui
+        run_gui()
