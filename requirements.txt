@@ -8,3 +8,4 @@ pytest
 httpx
 customtkinter==5.2.2
 bcrypt==4.1.2
+flet==0.22.1

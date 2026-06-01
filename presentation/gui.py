@@ -1,275 +1,315 @@
-import customtkinter as ctk
-from tkinter import messagebox
-import sys
+import flet as ft
 import os
-from PIL import Image, ImageEnhance
+import sys
+import time
 
-from data.database import register_user, verify_user, init_db, update_user_stats, get_all_users, delete_user
+# Proje kök dizinini path'e ekle
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-# Koyu tema ve neon renk ayarları
-ctk.set_appearance_mode("Dark")
-ctk.set_default_color_theme("dark-blue")
+from application.user_service import UserService
+from data.database import init_db
 
-NEON_CYAN = "#00F3FF"
-NEON_CYAN_HOVER = "#00C2CC"
-NEON_PINK = "#FF00AA"
-NEON_PINK_HOVER = "#CC0088"
-BG_DARK = "#0D0D12"
-CARD_DARK = "#1A1A24"
+# --- MODERN TASARIM SİSTEMİ ---
+PRIMARY = "#10B981"
+PRIMARY_LIGHT = "#34D399"
+BG_DARK = "#0F172A"
+CARD_BG = "#1E293B"
+TEXT_MAIN = "#F8FAFC"
+TEXT_DIM = "#94A3B8"
+ACCENT = "#F59E0B"
 
-
-class FormAnalyzerApp(ctk.CTk):
-    def __init__(self):
-        super().__init__()
+class FormAnalyzerApp:
+    def __init__(self, page: ft.Page):
+        self.page = page
+        self.page.title = "AI Biomechanical Form Analyzer"
+        self.page.theme_mode = "dark"
+        self.page.bgcolor = BG_DARK
+        self.page.window_width = 1100
+        self.page.window_height = 800
+        self.page.window_resizable = False
         
-        self.title("Biyomekanik Form Analizörü")
-        self.geometry("800x500")
-        self.resizable(False, False)
-        self.configure(fg_color=BG_DARK)
+        # Font Yükleme
+        self.page.fonts = {
+            "Outfit": "https://github.com/google/fonts/raw/main/ofl/outfit/Outfit-VariableFont_wght.ttf"
+        }
+        self.page.theme = ft.Theme(font_family="Outfit")
         
-        # Ekranı ortala
-        self.eval('tk::PlaceWindow . center')
-        
-        # Veritabanını hazırla
+        self.user_data = None
         init_db()
+        self.show_login()
 
-        # Arka plan resmi yükleme ve soluklaştırma (faded)
-        bg_path = "bg.png"
-        if os.path.exists(bg_path):
-            try:
-                pil_img = Image.open(bg_path).convert("RGBA")
-                # Resmi silikleştirmek için alfa kanalını ve parlaklığı düşürüyoruz
-                enhancer = ImageEnhance.Brightness(pil_img)
-                pil_img = enhancer.enhance(0.2)  # %20 parlaklık (karanlık ve silik)
-                
-                bg_image = ctk.CTkImage(light_image=pil_img, dark_image=pil_img, size=(800, 500))
-                self.bg_label = ctk.CTkLabel(self, image=bg_image, text="")
-                self.bg_label.place(x=0, y=0, relwidth=1, relheight=1)
-            except Exception as e:
-                print(f"Arka plan resmi yüklenemedi: {e}")
+    def clear_page(self):
+        self.page.controls.clear()
+        self.page.update()
 
-        # Sol Panel (Banner)
-        self.sidebar_frame = ctk.CTkFrame(self, width=300, corner_radius=0, fg_color="#101016") # Yarı şeffaflık hissi için koyu
-        self.sidebar_frame.pack(side="left", fill="y")
-        self.sidebar_frame.pack_propagate(False)
+    def show_login(self, e=None):
+        self.clear_page()
         
-        self.logo_label = ctk.CTkLabel(
-            self.sidebar_frame, 
-            text="AI FORM", 
-            font=ctk.CTkFont(size=40, weight="bold"),
-            text_color=NEON_CYAN
+        username_field = ft.TextField(
+            label="Kullanıcı Adı",
+            icon="person",
+            border_color=PRIMARY,
+            focused_border_color=PRIMARY_LIGHT,
+            width=350,
+            border_radius=12,
         )
-        self.logo_label.pack(pady=(150, 5))
+        password_field = ft.TextField(
+            label="Şifre",
+            icon="lock",
+            password=True,
+            can_reveal_password=True,
+            border_color=PRIMARY,
+            focused_border_color=PRIMARY_LIGHT,
+            width=350,
+            border_radius=12,
+        )
+
+        login_card = ft.Container(
+            content=ft.Column(
+                [
+                    ft.Text("AI FORM", size=48, weight="bold", color=PRIMARY),
+                    ft.Text("Biomechanical Analysis Pro", color=TEXT_DIM, size=16),
+                    ft.Divider(height=40, color="transparent"),
+                    username_field,
+                    password_field,
+                    ft.Divider(height=20, color="transparent"),
+                    ft.ElevatedButton(
+                        "GİRİŞ YAP",
+                        width=350,
+                        height=55,
+                        style=ft.ButtonStyle(
+                            bgcolor=PRIMARY,
+                            color=BG_DARK,
+                            shape=ft.RoundedRectangleBorder(radius=12),
+                            elevation=10,
+                        ),
+                        on_click=lambda _: self.handle_login(username_field.value, password_field.value),
+                    ),
+                    ft.TextButton(
+                        "Hesabın yok mu? Yeni bir profil oluştur",
+                        on_click=self.show_register,
+                        style=ft.ButtonStyle(color=PRIMARY_LIGHT),
+                    ),
+                ],
+                horizontal_alignment="center",
+            ),
+            padding=50,
+            bgcolor=CARD_BG,
+            border_radius=24,
+            shadow=ft.BoxShadow(blur_radius=40, color="#00000066", spread_radius=-10),
+        )
+
+        self.page.add(
+            ft.Container(
+                content=login_card,
+                alignment=ft.Alignment(0, 0),
+                expand=True,
+                bgcolor=BG_DARK
+            )
+        )
+
+    def show_register(self, e=None):
+        self.clear_page()
         
-        self.sub_logo = ctk.CTkLabel(
-            self.sidebar_frame, 
-            text="ANALYSIS PRO", 
-            font=ctk.CTkFont(size=18, weight="bold"),
-            text_color=NEON_PINK
+        username_field = ft.TextField(label="Yeni Kullanıcı Adı", icon="person_add", width=350, border_radius=12)
+        password_field = ft.TextField(label="Yeni Şifre", icon="lock_open", password=True, can_reveal_password=True, width=350, border_radius=12)
+
+        register_card = ft.Container(
+            content=ft.Column(
+                [
+                    ft.Text("YENİ KAYIT", size=32, weight="bold", color=ACCENT),
+                    ft.Text("Performans yolculuğuna bugün katıl", color=TEXT_DIM),
+                    ft.Divider(height=40, color="transparent"),
+                    username_field,
+                    password_field,
+                    ft.Divider(height=20, color="transparent"),
+                    ft.ElevatedButton(
+                        "HESAP OLUŞTUR",
+                        width=350,
+                        height=55,
+                        style=ft.ButtonStyle(bgcolor=ACCENT, color=BG_DARK, shape=ft.RoundedRectangleBorder(radius=12)),
+                        on_click=lambda _: self.handle_register(username_field.value, password_field.value),
+                    ),
+                    ft.TextButton("Zaten hesabın var mı? Giriş yap", on_click=self.show_login),
+                ],
+                horizontal_alignment="center",
+            ),
+            padding=50,
+            bgcolor=CARD_BG,
+            border_radius=24,
         )
-        self.sub_logo.pack(pady=0)
 
-        # Sağ Panel (Ana İçerik)
-        self.main_frame = ctk.CTkFrame(self, corner_radius=0, fg_color="transparent")
-        self.main_frame.pack(side="right", fill="both", expand=True)
+        self.page.add(ft.Container(content=register_card, alignment=ft.Alignment(0, 0), expand=True, bgcolor=BG_DARK))
 
-        # View state
-        self.current_view = None
-        self.show_login_view()
-
-    def show_login_view(self):
-        if self.current_view:
-            self.current_view.destroy()
-            
-        self.current_view = ctk.CTkFrame(self.main_frame, fg_color="transparent")
-        self.current_view.pack(expand=True, fill="both", padx=60, pady=60)
-
-        title = ctk.CTkLabel(self.current_view, text="GİRİŞ YAP", font=ctk.CTkFont(size=28, weight="bold"), text_color="white")
-        title.pack(pady=(0, 40))
-
-        self.entry_username_l = ctk.CTkEntry(self.current_view, placeholder_text="Kullanıcı Adı", width=300, height=45, fg_color="#181820", border_color="#333", border_width=1)
-        self.entry_username_l.pack(pady=10)
-
-        self.entry_password_l = ctk.CTkEntry(self.current_view, placeholder_text="Şifre", show="*", width=300, height=45, fg_color="#181820", border_color="#333", border_width=1)
-        self.entry_password_l.pack(pady=10)
-
-        btn_login = ctk.CTkButton(self.current_view, text="GİRİŞ", command=self.login_event, width=300, height=45, fg_color=NEON_CYAN, hover_color=NEON_CYAN_HOVER, text_color="black", font=ctk.CTkFont(weight="bold"))
-        btn_login.pack(pady=(30, 10))
-
-        btn_switch = ctk.CTkButton(self.current_view, text="Hesabın yok mu? Kayıt Ol", command=self.show_register_view, width=300, height=35, fg_color="transparent", hover_color=CARD_DARK, text_color=NEON_PINK)
-        btn_switch.pack()
-
-    def show_register_view(self):
-        if self.current_view:
-            self.current_view.destroy()
-            
-        self.current_view = ctk.CTkFrame(self.main_frame, fg_color="transparent")
-        self.current_view.pack(expand=True, fill="both", padx=60, pady=60)
-
-        title = ctk.CTkLabel(self.current_view, text="YENİ HESAP", font=ctk.CTkFont(size=28, weight="bold"), text_color="white")
-        title.pack(pady=(0, 40))
-
-        self.entry_username_r = ctk.CTkEntry(self.current_view, placeholder_text="Yeni Kullanıcı Adı", width=300, height=45, fg_color="#181820", border_color="#333", border_width=1)
-        self.entry_username_r.pack(pady=10)
-
-        self.entry_password_r = ctk.CTkEntry(self.current_view, placeholder_text="Yeni Şifre", show="*", width=300, height=45, fg_color="#181820", border_color="#333", border_width=1)
-        self.entry_password_r.pack(pady=10)
-
-        btn_register = ctk.CTkButton(self.current_view, text="KAYIT OL", command=self.register_event, width=300, height=45, fg_color=NEON_PINK, hover_color=NEON_PINK_HOVER, text_color="white", font=ctk.CTkFont(weight="bold"))
-        btn_register.pack(pady=(30, 10))
-
-        btn_switch = ctk.CTkButton(self.current_view, text="Zaten hesabın var mı? Giriş Yap", command=self.show_login_view, width=300, height=35, fg_color="transparent", hover_color=CARD_DARK, text_color=NEON_CYAN)
-        btn_switch.pack()
-
-    def login_event(self):
-        username = self.entry_username_l.get().strip()
-        password = self.entry_password_l.get().strip()
+    def handle_login(self, username, password):
         if not username or not password:
-            messagebox.showwarning("Uyarı", "Lütfen tüm alanları doldurun.")
+            self.show_snack("Bütün alanları doldurmalısın.")
             return
-            
-        user = verify_user(username, password)
+        user = UserService.login(username, password)
         if user:
-            self.logged_in_user = user
-            self.show_dashboard_view()
+            self.user_data = user
+            self.show_dashboard()
         else:
-            messagebox.showerror("Hata", "Kullanıcı adı veya şifre hatalı!")
+            self.show_snack("Hatalı giriş bilgileri.")
 
-    def show_dashboard_view(self):
-        if self.current_view:
-            self.current_view.destroy()
-            
-        self.current_view = ctk.CTkFrame(self.main_frame, fg_color="transparent")
-        self.current_view.pack(expand=True, fill="both", padx=40, pady=40)
+    def handle_register(self, username, password):
+        if not username or not password: return
+        if UserService.register(username, password):
+            self.show_snack("Başarıyla kayıt oldun! Giriş yapabilirsin.")
+            self.show_login()
+        else:
+            self.show_snack("Bu kullanıcı adı sistemde mevcut.")
 
-        # Hoşgeldin ve Rol
-        role_color = NEON_CYAN if self.logged_in_user['role'] != 'admin' else NEON_PINK
-        welcome_lbl = ctk.CTkLabel(self.current_view, text=f"Hoşgeldin, {self.logged_in_user['username']}!", font=ctk.CTkFont(size=24, weight="bold"), text_color="white")
-        welcome_lbl.pack(pady=(0, 5))
+    def show_snack(self, message):
+        self.page.snack_bar = ft.SnackBar(ft.Text(message), bgcolor=CARD_BG)
+        self.page.snack_bar.open = True
+        self.page.update()
+
+    def show_dashboard(self):
+        self.clear_page()
         
-        role_lbl = ctk.CTkLabel(self.current_view, text=f"Yetki: {self.logged_in_user['role'].upper()}", font=ctk.CTkFont(size=14), text_color=role_color)
-        role_lbl.pack(pady=(0, 20))
+        # Header
+        header = ft.Container(
+            content=ft.Row(
+                [
+                    ft.Column([
+                        ft.Text(f"Hoş Geldin, {self.user_data['username']}", size=32, weight="bold", color=TEXT_MAIN),
+                        ft.Row([
+                            ft.Icon("verified", size=18, color=PRIMARY_LIGHT),
+                            ft.Text(f"{self.user_data['role'].upper()} SEVİYESİ", size=12, color=PRIMARY_LIGHT, weight="bold"),
+                        ]),
+                    ], spacing=2),
+                    ft.IconButton(icon="logout", icon_color=TEXT_DIM, on_click=self.show_login, tooltip="Oturumu Kapat"),
+                ],
+                alignment="spaceBetween",
+            ),
+        )
 
-        # Boy / Kilo Alanı
-        metrics_frame = ctk.CTkFrame(self.current_view, fg_color=CARD_DARK, corner_radius=10)
-        metrics_frame.pack(fill="x", pady=10, padx=20)
-        
-        ctk.CTkLabel(metrics_frame, text="Vücut Kitle İndeksi (VKİ) Hesaplama", font=ctk.CTkFont(size=16, weight="bold"), text_color="white").pack(pady=(10,5))
-        
-        input_frame = ctk.CTkFrame(metrics_frame, fg_color="transparent")
-        input_frame.pack(pady=5)
-        
-        self.entry_height = ctk.CTkEntry(input_frame, placeholder_text="Boy (cm) örn: 180", width=140)
-        self.entry_height.pack(side="left", padx=10)
-        if self.logged_in_user['height']: self.entry_height.insert(0, str(int(self.logged_in_user['height'])))
-        
-        self.entry_weight = ctk.CTkEntry(input_frame, placeholder_text="Kilo (kg) örn: 75", width=140)
-        self.entry_weight.pack(side="left", padx=10)
-        if self.logged_in_user['weight']: self.entry_weight.insert(0, str(int(self.logged_in_user['weight'])))
+        # Space after header
+        header_spacer = ft.Divider(height=20, color="transparent")
 
-        btn_calc = ctk.CTkButton(metrics_frame, text="Hesapla ve Kaydet", command=self.calculate_bmi, width=150, fg_color="#333", hover_color="#444")
-        btn_calc.pack(pady=10)
-        
-        self.lbl_bmi_result = ctk.CTkLabel(metrics_frame, text="", font=ctk.CTkFont(size=14))
-        self.lbl_bmi_result.pack(pady=(0, 10))
+        # BMI Logic
+        bmi_val = 0
+        bmi_lbl, bmi_clr = "Veri Bekleniyor", TEXT_DIM
+        if self.user_data['height'] and self.user_data['weight']:
+            h, w = self.user_data['height']/100, self.user_data['weight']
+            bmi_val = w / (h*h)
+            if bmi_val < 18.5: bmi_lbl, bmi_clr = "Zayıf", "blue400"
+            elif 18.5 <= bmi_val < 25: bmi_lbl, bmi_clr = "Normal", PRIMARY
+            elif 25 <= bmi_val < 30: bmi_lbl, bmi_clr = "Kilolu", "orange400"
+            else: bmi_lbl, bmi_clr = "Obez", "red400"
 
-        # Başlat Butonu
-        btn_start = ctk.CTkButton(self.current_view, text="🚀 ANTRENMANI BAŞLAT", command=self.start_analyzer, width=300, height=60, fg_color=NEON_CYAN, hover_color=NEON_CYAN_HOVER, text_color="black", font=ctk.CTkFont(size=18, weight="bold"))
-        btn_start.pack(pady=30)
+        # Health Card
+        self.height_input = ft.TextField(value=str(int(self.user_data['height'])) if self.user_data['height'] else "", width=80, height=45, text_size=14, border_radius=8)
+        self.weight_input = ft.TextField(value=str(int(self.user_data['weight'])) if self.user_data['weight'] else "", width=80, height=45, text_size=14, border_radius=8)
 
-        # Admin Paneli Butonu
-        if self.logged_in_user['role'] == 'admin':
-            btn_admin = ctk.CTkButton(self.current_view, text="⚙️ Yönetim Paneli", command=self.show_admin_view, width=200, height=35, fg_color=NEON_PINK, hover_color=NEON_PINK_HOVER, text_color="white")
-            btn_admin.pack(pady=10)
+        health_card = ft.Container(
+            content=ft.Column([
+                ft.Text("Vücut Durumu", size=20, weight="bold"),
+                ft.Row([
+                    ft.Column([ft.Text("Boy", size=12, color=TEXT_DIM), self.height_input]),
+                    ft.Column([ft.Text("Kilo", size=12, color=TEXT_DIM), self.weight_input]),
+                ], spacing=20),
+                ft.ElevatedButton("Güncelle", icon="refresh", on_click=self.handle_stats_update, style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=8))),
+                ft.Container(
+                    content=ft.Column([
+                        ft.Row([ft.Text("VKİ Endeksi", size=14), ft.Text(f"{bmi_val:.1f}", weight="bold", color=bmi_clr)], alignment="spaceBetween"),
+                        ft.ProgressBar(value=min(bmi_val/40, 1), color=bmi_clr, height=10, border_radius=5),
+                        ft.Text(bmi_lbl, size=12, color=bmi_clr),
+                    ], spacing=10),
+                    margin=10
+                )
+            ], spacing=20),
+            padding=30, bgcolor=CARD_BG, border_radius=20, expand=2 # INTEGER EXPAND
+        )
 
-    def calculate_bmi(self):
-        try:
-            h = float(self.entry_height.get())
-            w = float(self.entry_weight.get())
-            
-            # Kaydet
-            update_user_stats(self.logged_in_user['id'], h, w)
-            self.logged_in_user['height'] = h
-            self.logged_in_user['weight'] = w
-            
-            bmi = w / ((h/100)**2)
-            
-            if bmi < 18.5:
-                res = "Zayıf - Kas Kütlesi Eklemelisin!"
-                col = NEON_CYAN
-            elif 18.5 <= bmi < 24.9:
-                res = "İdeal - Formunu Koru!"
-                col = "#00FF00"
-            elif 25 <= bmi < 29.9:
-                res = "Fazla Kilolu - Kardiyo Ekleyebilirsin!"
-                col = "orange"
-            else:
-                res = "Obezite - Dikkatli Antrenman!"
-                col = NEON_PINK
+        # Action Card
+        action_card = ft.Container(
+            content=ft.Column([
+                # Sadece modern dambıl ikonu kalsın
+                ft.Container(content=ft.Icon("fitness_center", size=60, color=PRIMARY), padding=20, bgcolor="#10B9811A", border_radius=30),
                 
-            self.lbl_bmi_result.configure(text=f"VKİ: {bmi:.1f} | Tavsiye: {res}", text_color=col)
-        except ValueError:
-            messagebox.showerror("Hata", "Lütfen geçerli sayılar girin.")
+                # Orijinal metinler
+                ft.Text("Form Analizi", size=26, weight="bold", color=TEXT_MAIN),
+                ft.Text("Biyomekanik formunu analiz etmek için kameranı başlat.", color=TEXT_DIM, text_align="center"),
+                
+                ft.Divider(height=30, color="transparent"),
+                
+                # Buton
+                ft.Container(
+                    content=ft.ElevatedButton(
+                        "ANTRENMANI BAŞLAT", icon="play_circle", width=300, height=70,
+                        style=ft.ButtonStyle(bgcolor=PRIMARY, color=BG_DARK, shape=ft.RoundedRectangleBorder(radius=15), elevation=15),
+                        on_click=self.start_analyzer_flow
+                    ),
+                    shadow=ft.BoxShadow(blur_radius=30, spread_radius=-10, color=PRIMARY)
+                ),
+            ], horizontal_alignment="center", spacing=15, alignment="center"),
+            padding=30, bgcolor=CARD_BG, border_radius=25, expand=3
+        )
 
-    def show_admin_view(self):
-        if self.current_view:
-            self.current_view.destroy()
-            
-        self.current_view = ctk.CTkFrame(self.main_frame, fg_color="transparent")
-        self.current_view.pack(expand=True, fill="both", padx=40, pady=40)
+        # Admin path
+        admin_path = ft.Container()
+        if self.user_data['role'] == 'admin':
+            admin_path = ft.Container(
+                content=ft.TextButton("Yönetim Paneli", icon="admin_panel_settings", on_click=self.show_admin),
+                margin=20
+            )
 
-        title = ctk.CTkLabel(self.current_view, text="⚙️ YÖNETİM PANELİ", font=ctk.CTkFont(size=24, weight="bold"), text_color=NEON_PINK)
-        title.pack(pady=(0, 20))
+        # Layout
+        self.page.add(
+            ft.Container(
+                content=ft.Column([
+                    header,
+                    header_spacer,
+                    ft.Row([health_card, action_card], spacing=30, expand=True),
+                    admin_path
+                ], expand=True),
+                padding=40, 
+                expand=True,
+                bgcolor=BG_DARK
+            )
+        )
 
-        # Kullanıcı Listesi
-        list_frame = ctk.CTkScrollableFrame(self.current_view, width=400, height=250, fg_color=CARD_DARK)
-        list_frame.pack(pady=10)
-
-        users = get_all_users()
-        for u in users:
-            row = ctk.CTkFrame(list_frame, fg_color="transparent")
-            row.pack(fill="x", pady=5)
-            
-            lbl = ctk.CTkLabel(row, text=f"{u['username']} ({u['role']})", text_color="white", width=250, anchor="w")
-            lbl.pack(side="left", padx=10)
-            
-            if u['id'] != self.logged_in_user['id']: # Kendini silemesin
-                btn_del = ctk.CTkButton(row, text="Sil", width=60, fg_color="red", hover_color="#aa0000", command=lambda uid=u['id']: self.delete_user_event(uid))
-                btn_del.pack(side="right", padx=10)
-
-        btn_back = ctk.CTkButton(self.current_view, text="Geri Dön", command=self.show_dashboard_view, width=200, fg_color="#333", hover_color="#444")
-        btn_back.pack(pady=20)
-
-    def delete_user_event(self, uid):
-        if messagebox.askyesno("Onay", "Kullanıcıyı silmek istediğinize emin misiniz?"):
-            delete_user(uid)
-            self.show_admin_view() # Yenile
-
-    def register_event(self):
-        username = self.entry_username_r.get().strip()
-        password = self.entry_password_r.get().strip()
-        if not username or not password:
-            messagebox.showwarning("Uyarı", "Lütfen tüm alanları doldurun.")
-            return
-        success = register_user(username, password)
-        if success:
-            messagebox.showinfo("Başarılı", "Kayıt başarılı! Lütfen giriş yapın.")
-            self.show_login_view()
-        else:
-            messagebox.showerror("Hata", "Bu kullanıcı adı alınmış!")
-
-    def start_analyzer(self):
-        self.destroy()
-        from form_analyzer import main
+    def handle_stats_update(self, e):
         try:
-            main()
-        except Exception as e:
-            print(f"Kamera başlatılırken hata oluştu: {e}")
-            sys.exit(1)
+            h, w = float(self.height_input.value), float(self.weight_input.value)
+            UserService.update_stats(self.user_data['id'], h, w)
+            self.user_data['height'], self.user_data['weight'] = h, w
+            self.show_dashboard()
+            self.show_snack("Veriler başarıyla güncellendi.")
+        except: self.show_snack("Lütfen geçerli sayılar girin.")
+
+    def show_admin(self, e):
+        self.clear_page()
+        users = UserService.list_all_users()
+        rows = [ft.DataRow(cells=[
+            ft.DataCell(ft.Text(str(u['id']))),
+            ft.DataCell(ft.Text(u['username'])),
+            ft.DataCell(ft.Text(u['role'])),
+            ft.DataCell(ft.IconButton("delete", icon_color="red", on_click=lambda _, uid=u['id']: self.handle_delete_user(uid), visible=(u['id']!=self.user_data['id']))),
+        ]) for u in users]
+
+        self.page.add(ft.Container(
+            content=ft.Column([
+                ft.Row([ft.Text("Yönetim Paneli", size=32, weight="bold"), ft.ElevatedButton("Geri Dön", icon="arrow_back", on_click=lambda _: self.show_dashboard())], alignment="spaceBetween"),
+                ft.DataTable(columns=[ft.DataColumn(ft.Text("ID")), ft.DataColumn(ft.Text("Kullanıcı")), ft.DataColumn(ft.Text("Rol")), ft.DataColumn(ft.Text("İşlem"))], rows=rows, bgcolor=CARD_BG, border_radius=15, expand=True)
+            ]), padding=40, expand=True
+        ))
+
+    def handle_delete_user(self, uid):
+        if UserService.remove_user(uid): self.show_admin(None)
+
+    def start_analyzer_flow(self, e):
+        self.page.window_close()
+        time.sleep(0.5)
+        import form_analyzer
+        print("\n[INFO] CV Analizörü başlatılıyor...")
+        try: form_analyzer.main()
+        except Exception as ex: print(f"[ERROR] Hata: {ex}")
 
 def run_gui():
-    app = FormAnalyzerApp()
-    app.mainloop()
+    ft.app(target=FormAnalyzerApp)
 
 if __name__ == "__main__":
     run_gui()
